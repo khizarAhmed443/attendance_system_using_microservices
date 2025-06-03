@@ -1,7 +1,7 @@
-// API endpoints
-const STUDENT_API = 'http://localhost:5001/api/students';
-const LECTURE_API = 'http://localhost:5002/api/lectures';
-const ATTENDANCE_API = 'http://localhost:5003/api/attendance';
+// Use the URLs from config.js
+const STUDENT_API = `${API_CONFIG.STUDENT_SERVICE}/api/students`;
+const LECTURE_API = `${API_CONFIG.LECTURE_SERVICE}/api/lectures`;
+const ATTENDANCE_API = `${API_CONFIG.ATTENDANCE_SERVICE}/api/attendance`;
 
 // Utility functions
 function showError(message) {
