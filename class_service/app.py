@@ -3,9 +3,14 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import os
 import requests
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": ["https://comfy-lokum-190901.netlify.app", "http://localhost:3000"]}})
+
+CORS(app, resources={r"/api/*": {"origins": ["https://singular-druid-257f19.netlify.app", "http://localhost:3000"]}})
 
 # Configure SQLite database
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///classes.db'

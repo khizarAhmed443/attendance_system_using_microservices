@@ -29,8 +29,20 @@
                     <input type="text" id="studentName" required>
                 </div>
                 <div class="form-group">
+                    <label for="studentRollNumber">Roll Number</label>
+                    <input type="text" id="studentRollNumber" required>
+                </div>
+                <div class="form-group">
                     <label for="studentEmail">Email</label>
                     <input type="email" id="studentEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="studentPhone">Phone</label>
+                    <input type="tel" id="studentPhone" required>
+                </div>
+                <div class="form-group">
+                    <label for="studentAddress">Address</label>
+                    <textarea id="studentAddress" required></textarea>
                 </div>
                 <div class="form-group">
                     <label for="studentClass">Class</label>
@@ -45,8 +57,11 @@
                 <table id="studentTable">
                     <thead>
                         <tr>
+                            <th>Roll Number</th>
                             <th>Name</th>
                             <th>Email</th>
+                            <th>Phone</th>
+                            <th>Address</th>
                             <th>Class</th>
                             <th>Actions</th>
                         </tr>
@@ -94,11 +109,14 @@
                     students.forEach(student => {
                         const row = document.createElement('tr');
                         row.innerHTML = `
+                            <td>${student.roll_number}</td>
                             <td>${student.name}</td>
                             <td>${student.email}</td>
+                            <td>${student.phone}</td>
+                            <td>${student.address}</td>
                             <td>${student.class_name || 'Not Assigned'}</td>
                             <td>
-                                <button onclick="editStudent(${student.id}, '${student.name}', '${student.email}', ${student.class_id || 'null'})" class="btn-edit">Edit</button>
+                                <button onclick="editStudent(${student.id}, '${student.name}', '${student.roll_number}', '${student.email}', '${student.phone}', '${student.address}', ${student.class_id || 'null'})" class="btn-edit">Edit</button>
                                 <button onclick="deleteStudent(${student.id})" class="btn-delete">Delete</button>
                             </td>
                         `;
@@ -114,7 +132,10 @@
         function addStudent(event) {
             event.preventDefault();
             const name = document.getElementById('studentName').value;
+            const rollNumber = document.getElementById('studentRollNumber').value;
             const email = document.getElementById('studentEmail').value;
+            const phone = document.getElementById('studentPhone').value;
+            const address = document.getElementById('studentAddress').value;
             const classId = document.getElementById('studentClass').value;
 
             fetch(`${API_CONFIG.STUDENT_SERVICE}/api/students`, {
@@ -122,23 +143,40 @@
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ name, email, class_id: classId })
+                body: JSON.stringify({
+                    name,
+                    roll_number: rollNumber,
+                    email,
+                    phone,
+                    address,
+                    class_id: classId
+                })
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.error || 'Failed to add student');
+                    });
+                }
+                return response.json();
+            })
             .then(data => {
                 document.getElementById('studentForm').reset();
                 loadStudents();
             })
             .catch(error => {
                 console.error('Error adding student:', error);
-                alert('Error adding student. Please try again.');
+                alert(error.message || 'Error adding student. Please try again.');
             });
         }
 
-        function editStudent(id, name, email, classId) {
+        function editStudent(id, name, rollNumber, email, phone, address, classId) {
             // Populate form with student data
             document.getElementById('studentName').value = name;
+            document.getElementById('studentRollNumber').value = rollNumber;
             document.getElementById('studentEmail').value = email;
+            document.getElementById('studentPhone').value = phone;
+            document.getElementById('studentAddress').value = address;
             document.getElementById('studentClass').value = classId;
             
             // Change form submit handler
@@ -146,21 +184,34 @@
             form.onsubmit = function(event) {
                 event.preventDefault();
                 const updatedName = document.getElementById('studentName').value;
+                const updatedRollNumber = document.getElementById('studentRollNumber').value;
                 const updatedEmail = document.getElementById('studentEmail').value;
+                const updatedPhone = document.getElementById('studentPhone').value;
+                const updatedAddress = document.getElementById('studentAddress').value;
                 const updatedClassId = document.getElementById('studentClass').value;
 
-                fetch(`${API_CONFIG.STUDENT_SERVICE}/api/students/${id}`, {
+                fetch(`${API_CONFIG.STUDENT_SERVICE}/api/students/${rollNumber}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ 
-                        name: updatedName, 
+                        name: updatedName,
+                        roll_number: updatedRollNumber,
                         email: updatedEmail,
+                        phone: updatedPhone,
+                        address: updatedAddress,
                         class_id: updatedClassId
                     })
                 })
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(data => {
+                            throw new Error(data.error || 'Failed to update student');
+                        });
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     form.reset();
                     form.onsubmit = addStudent; // Reset form handler
@@ -168,7 +219,7 @@
                 })
                 .catch(error => {
                     console.error('Error updating student:', error);
-                    alert('Error updating student. Please try again.');
+                    alert(error.message || 'Error updating student. Please try again.');
                 });
             };
         }
