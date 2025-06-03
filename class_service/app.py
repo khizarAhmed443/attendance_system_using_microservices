@@ -2,14 +2,13 @@ from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import os
+import requests
 
 app = Flask(__name__)
 CORS(app)
 
 # Configure SQLite database
-basedir = os.path.abspath(os.path.dirname(__file__))
-db_path = os.path.join(os.path.dirname(basedir), 'instance', 'classes.db')
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///classes.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
@@ -29,7 +28,7 @@ class Class(db.Model):
 # Create database tables
 with app.app_context():
     db.create_all()
-    print(f"Database initialized at: {db_path}")
+    print(f"Database initialized at: {os.path.join(os.path.dirname(os.path.abspath(__file__)), 'classes.db')}")
 
 @app.route('/api/classes', methods=['GET', 'POST'])
 def handle_classes():
