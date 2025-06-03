@@ -92,19 +92,21 @@
     </div>
     <script src="js/config.js"></script>
     <script>
-        document.getElementById('loginForm').addEventListener('submit', function(event) {
+        function handleLogin(event) {
             event.preventDefault();
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
 
-            // For demo purposes, using a simple check
             if (username === 'admin' && password === 'admin') {
                 sessionStorage.setItem('isAdminLoggedIn', 'true');
-                window.location.href = 'home.html';
+                window.location.href = 'admin_mark_attendance.html';
             } else {
-                alert('Invalid username or password');
+                sessionStorage.setItem('isAdminLoggedIn', 'false');
+                window.location.href = 'home.html';
             }
-        });
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', handleLogin);
     </script>
 </body>
 </html> 

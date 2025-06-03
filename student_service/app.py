@@ -10,7 +10,7 @@ load_dotenv()
 
 app = Flask(__name__)
 
-CORS(app, resources={r"/api/*": {"origins": ["https://illustrious-pothos-d7c0a1.netlify.app", "http://localhost:3000"]}})
+CORS(app, resources={r"/api/*": {"origins": ["https://peppy-malasada-d3525e.netlify.app", "http://localhost:3000"]}})
 
 # Configure SQLite database
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///students.db'

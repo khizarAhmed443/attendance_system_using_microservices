@@ -40,6 +40,12 @@
                         <option value="">All Subjects</option>
                     </select>
                 </div>
+                <div class="form-group">
+                    <label for="rollNumberFilter">Roll Number</label>
+                    <input type="text" id="rollNumberFilter" placeholder="Enter roll number">
+                </div>
+                <button onclick="loadAttendance()">Search</button>
+                <button onclick="resetFilters()">Reset</button>
             </div>
             <div class="attendance-list">
                 <table id="attendanceTable">
@@ -66,7 +72,7 @@
             document.getElementById('adminNav').style.display = isAdmin ? 'flex' : 'none';
             
             loadClasses();
-            loadAttendance();
+            loadAttendance(); // Load all attendance records initially
         });
 
         function loadClasses() {
@@ -91,12 +97,14 @@
         function loadAttendance() {
             const classId = document.getElementById('classFilter').value;
             const subject = document.getElementById('subjectFilter').value;
+            const rollNumber = document.getElementById('rollNumberFilter').value;
 
             let url = `${API_CONFIG.ATTENDANCE_SERVICE}/api/attendance`;
             const params = new URLSearchParams();
             
             if (classId) params.append('class_id', classId);
             if (subject) params.append('subject', subject);
+            if (rollNumber) params.append('roll_number', rollNumber);
             
             if (params.toString()) {
                 url += `?${params.toString()}`;
@@ -138,6 +146,13 @@
                     console.error('Error loading attendance:', error);
                     alert('Error loading attendance records. Please try again.');
                 });
+        }
+
+        function resetFilters() {
+            document.getElementById('classFilter').value = '';
+            document.getElementById('subjectFilter').value = '';
+            document.getElementById('rollNumberFilter').value = '';
+            loadAttendance();
         }
 
         // Update subjects when class is selected

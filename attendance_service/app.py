@@ -14,7 +14,7 @@ app = Flask(__name__)
 # Configure CORS to allow all methods
 CORS(app, resources={
     r"/api/*": {
-        "origins": ["https://illustrious-pothos-d7c0a1.netlify.app", "http://localhost:3000"],
+        "origins": ["https://peppy-malasada-d3525e.netlify.app", "http://localhost:3000"],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         "allow_headers": ["Content-Type"]
     }
