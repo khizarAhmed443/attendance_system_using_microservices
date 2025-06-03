@@ -92,7 +92,7 @@
                     lectures.forEach(lecture => {
                         const option = document.createElement('option');
                         option.value = lecture.id;
-                        option.textContent = `${lecture.name} - ${lecture.date} ${lecture.time}`;
+                        option.textContent = `${lecture.subject} - ${lecture.date} ${lecture.time}`;
                         select.appendChild(option);
                     });
                 })

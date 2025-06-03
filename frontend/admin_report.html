@@ -189,55 +189,53 @@
             const lectureId = document.getElementById('lectureSelect').value;
             const studentId = document.getElementById('studentSelect').value;
 
-            // Filter attendance records based on report type
-            let filteredRecords = dataCache.attendance.data;
+            let url = `${API_CONFIG.ATTENDANCE_SERVICE}/api/attendance`;
+            const params = new URLSearchParams();
+            
+            if (classId) params.append('class_id', classId);
+            if (lectureId) params.append('lecture_id', lectureId);
+            if (studentId) params.append('roll_number', studentId);
+            
+            if (params.toString()) {
+                url += `?${params.toString()}`;
+            }
 
-            if (classId) {
-                filteredRecords = filteredRecords.filter(record => {
-                    const lecture = dataCache.lectureMap.get(record.lecture_id);
-                    return lecture && lecture.class_id == classId;
+            fetch(url)
+                .then(response => response.json())
+                .then(records => {
+                    const tbody = document.getElementById('reportTableBody');
+                    tbody.innerHTML = '';
+
+                    if (records.length === 0) {
+                        const row = document.createElement('tr');
+                        row.innerHTML = '<td colspan="5" class="no-data">No records found</td>';
+                        tbody.appendChild(row);
+                        return;
+                    }
+
+                    // Sort records by date and time
+                    records.sort((a, b) => {
+                        const dateA = new Date(`${a.date} ${a.time}`);
+                        const dateB = new Date(`${b.date} ${b.time}`);
+                        return dateB - dateA;
+                    });
+
+                    records.forEach(record => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${record.date}</td>
+                            <td>${record.time}</td>
+                            <td>${record.subject}</td>
+                            <td>${record.student_name}</td>
+                            <td>${record.status}</td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading report:', error);
+                    alert('Error loading report. Please try again.');
                 });
-            }
-
-            if (lectureId) {
-                filteredRecords = filteredRecords.filter(record => record.lecture_id == lectureId);
-            }
-
-            if (studentId) {
-                filteredRecords = filteredRecords.filter(record => record.student_id == studentId);
-            }
-
-            // Sort records by date and time
-            filteredRecords.sort((a, b) => {
-                const dateA = new Date(`${a.date} ${a.time}`);
-                const dateB = new Date(`${b.date} ${b.time}`);
-                return dateB - dateA;
-            });
-
-            // Display results
-            const tbody = document.getElementById('reportTableBody');
-            tbody.innerHTML = '';
-
-            if (filteredRecords.length === 0) {
-                const row = document.createElement('tr');
-                row.innerHTML = '<td colspan="5" class="no-data">No records found</td>';
-                tbody.appendChild(row);
-                return;
-            }
-
-            filteredRecords.forEach(record => {
-                const lecture = dataCache.lectureMap.get(record.lecture_id);
-                const student = dataCache.studentMap.get(record.student_id);
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${record.date}</td>
-                    <td>${record.time}</td>
-                    <td>${lecture ? lecture.name : 'N/A'}</td>
-                    <td>${student ? student.name : 'N/A'}</td>
-                    <td>${record.status}</td>
-                `;
-                tbody.appendChild(row);
-            });
         }
 
         function logout() {
