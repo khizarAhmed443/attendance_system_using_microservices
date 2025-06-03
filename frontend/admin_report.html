@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Report - Admin Panel</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <a href="home.html" class="navbar-brand">Attendance System</a>
+        <div class="navbar-links">
+            <a href="admin_add_class.html">Add Class</a>
+            <a href="admin_add_student.html">Add Student</a>
+            <a href="admin_add_lecture.html">Add Lecture</a>
+            <a href="admin_mark_attendance.html">Mark Attendance</a>
+            <a href="admin_report.html">Report</a>
+            <a href="#" onclick="logout()">Logout</a>
+        </div>
+    </nav>
+    <div class="container">
+        <header>
+            <h1>Attendance Report</h1>
+        </header>
+        <div class="panel">
+            <form id="reportForm">
+                <div class="form-group">
+                    <label for="reportType">Report Type</label>
+                    <select id="reportType">
+                        <option value="">All Records</option>
+                        <option value="class">By Class</option>
+                        <option value="lecture">By Lecture</option>
+                        <option value="student">By Student</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="classSelect">Class</label>
+                    <select id="classSelect">
+                        <option value="">All Classes</option>
+                    </select>
+                </div>
+                <div class="form-group" id="lectureGroup" style="display:none;">
+                    <label for="lectureSelect">Lecture</label>
+                    <select id="lectureSelect">
+                        <option value="">Select Lecture</option>
+                    </select>
+                </div>
+                <div class="form-group" id="studentGroup" style="display:none;">
+                    <label for="studentSelect">Student</label>
+                    <select id="studentSelect">
+                        <option value="">Select Student</option>
+                    </select>
+                </div>
+                <div class="button-group">
+                    <button type="submit">Generate Report</button>
+                    <button type="button" onclick="resetForm()" class="reset-btn">Reset</button>
+                </div>
+            </form>
+            <div id="reportResult" class="section">
+                <h2>Report Results</h2>
+                <div id="loadingIndicator" class="loading" style="display: none;">Loading...</div>
+                <div id="reportContent">
+                    <table id="reportTable">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Subject</th>
+                                <th>Class</th>
+                                <th>Student</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        // Cache for storing data with timestamps
+        const dataCache = {
+            classes: { data: [], timestamp: 0 },
+            students: { data: [], timestamp: 0 },
+            lectures: { data: [], timestamp: 0 },
+            attendance: { data: [], timestamp: 0 }
+        };
+
+        // Cache duration in milliseconds (5 minutes)
+        const CACHE_DURATION = 5 * 60 * 1000;
+
+        // Loading indicator functions
+        function showLoading() {
+            document.getElementById('loadingIndicator').style.display = 'block';
+            document.getElementById('reportContent').style.display = 'none';
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingIndicator').style.display = 'none';
+            document.getElementById('reportContent').style.display = 'block';
+        }
+
+        // Fetch data with caching
+        async function fetchWithCache(url, cacheKey) {
+            const now = Date.now();
+            if (dataCache[cacheKey].data.length > 0 && (now - dataCache[cacheKey].timestamp < CACHE_DURATION)) {
+                return dataCache[cacheKey].data;
+            }
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const data = await response.json();
+                dataCache[cacheKey].data = data;
+                dataCache[cacheKey].timestamp = now;
+                return data;
+            } catch (error) {
+                console.error(`Error fetching ${cacheKey}:`, error);
+                throw error;
+            }
+        }
+
+        // Load all data at once
+        async function loadAllData() {
+            showLoading();
+            try {
+                const [classes, students, lectures, attendance] = await Promise.all([
+                    fetchWithCache('http://localhost:5004/api/classes', 'classes'),
+                    fetchWithCache('http://localhost:5001/api/students', 'students'),
+                    fetchWithCache('http://localhost:5002/api/lectures', 'lectures'),
+                    fetchWithCache('http://localhost:5003/api/attendance', 'attendance')
+                ]);
+
+                // Populate class dropdown
+                const classSelect = document.getElementById('classSelect');
+                classSelect.innerHTML = '<option value="">All Classes</option>';
+                classes.forEach(cls => {
+                    classSelect.innerHTML += `<option value="${cls.id}">${cls.name}</option>`;
+                });
+
+                // Show all attendance records initially
+                displayAllAttendance();
+            } catch (error) {
+                console.error('Error loading data:', error);
+                alert('Error loading data. Please refresh the page.');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Display all attendance records
+        function displayAllAttendance() {
+            const tbody = document.querySelector('#reportTable tbody');
+            const attendance = dataCache.attendance.data;
+            
+            // Sort records by date and time
+            attendance.sort((a, b) => {
+                const dateA = new Date(`${a.date} ${a.time}`);
+                const dateB = new Date(`${b.date} ${b.time}`);
+                return dateB - dateA;
+            });
+
+            // Display records
+            tbody.innerHTML = attendance.map(record => {
+                const student = dataCache.students.data.find(s => s.roll_number === record.roll_number);
+                const lecture = dataCache.lectures.data.find(l => l.id == record.lecture_id);
+                const classInfo = dataCache.classes.data.find(c => c.id == lecture?.class_id);
+                
+                return `
+                    <tr>
+                        <td>${record.date}</td>
+                        <td>${record.time}</td>
+                        <td>${lecture ? lecture.subject : ''}</td>
+                        <td>${classInfo ? classInfo.name : ''}</td>
+                        <td>${student ? student.name : record.roll_number}</td>
+                        <td>${record.status}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            if (attendance.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="no-data">No records found</td></tr>';
+            }
+        }
+
+        // Reset form and show all records
+        function resetForm() {
+            document.getElementById('reportType').value = '';
+            document.getElementById('classSelect').value = '';
+            document.getElementById('lectureSelect').value = '';
+            document.getElementById('studentSelect').value = '';
+            document.getElementById('lectureGroup').style.display = 'none';
+            document.getElementById('studentGroup').style.display = 'none';
+            displayAllAttendance();
+        }
+
+        // When report type changes
+        document.getElementById('reportType').addEventListener('change', function() {
+            const type = this.value;
+            document.getElementById('lectureGroup').style.display = type === 'lecture' ? 'block' : 'none';
+            document.getElementById('studentGroup').style.display = type === 'student' ? 'block' : 'none';
+            
+            if (!type) {
+                displayAllAttendance();
+            } else if (type === 'class' && document.getElementById('classSelect').value) {
+                generateReport();
+            }
+        });
+
+        // When class changes
+        document.getElementById('classSelect').addEventListener('change', function() {
+            const classId = this.value;
+            const lectureSelect = document.getElementById('lectureSelect');
+            const studentSelect = document.getElementById('studentSelect');
+            const reportType = document.getElementById('reportType').value;
+
+            lectureSelect.innerHTML = '<option value="">Select Lecture</option>';
+            studentSelect.innerHTML = '<option value="">Select Student</option>';
+
+            if (!classId) {
+                displayAllAttendance();
+                return;
+            }
+
+            // Filter and populate lectures
+            const classLectures = dataCache.lectures.data.filter(l => l.class_id == classId);
+            if (classLectures.length > 0) {
+                classLectures.forEach(lecture => {
+                    lectureSelect.innerHTML += `<option value="${lecture.id}">${lecture.date} ${lecture.time} - ${lecture.subject}</option>`;
+                });
+            }
+
+            // Filter and populate students
+            const classStudents = dataCache.students.data.filter(s => s.class_id == classId);
+            if (classStudents.length > 0) {
+                classStudents.forEach(student => {
+                    studentSelect.innerHTML += `<option value="${student.roll_number}">${student.name} (${student.roll_number})</option>`;
+                });
+            }
+
+            if (reportType === 'class') {
+                generateReport();
+            }
+        });
+
+        // Generate report
+        function generateReport() {
+            const type = document.getElementById('reportType').value;
+            const classId = document.getElementById('classSelect').value;
+            const lectureId = document.getElementById('lectureSelect').value;
+            const studentRoll = document.getElementById('studentSelect').value;
+            const tbody = document.querySelector('#reportTable tbody');
+
+            if (!type) {
+                displayAllAttendance();
+                return;
+            }
+
+            showLoading();
+
+            try {
+                // Create lookup maps for better performance
+                const studentMap = new Map(dataCache.students.data.map(s => [s.roll_number, s]));
+                const lectureMap = new Map(dataCache.lectures.data.map(l => [l.id, l]));
+                const classMap = new Map(dataCache.classes.data.map(c => [c.id, c]));
+
+                // Filter attendance records based on report type
+                let filteredRecords = dataCache.attendance.data.filter(record => {
+                    const lecture = lectureMap.get(record.lecture_id);
+                    if (!lecture) return false;
+
+                    if (type === 'lecture') {
+                        return record.lecture_id == lectureId;
+                    } else if (type === 'student') {
+                        return record.roll_number === studentRoll && lecture.class_id == classId;
+                    } else {
+                        return lecture.class_id == classId;
+                    }
+                });
+
+                // Sort records by date and time
+                filteredRecords.sort((a, b) => {
+                    const dateA = new Date(`${a.date} ${a.time}`);
+                    const dateB = new Date(`${b.date} ${b.time}`);
+                    return dateB - dateA;
+                });
+
+                // Display records
+                tbody.innerHTML = filteredRecords.map(record => {
+                    const student = studentMap.get(record.roll_number);
+                    const lecture = lectureMap.get(record.lecture_id);
+                    const classInfo = classMap.get(lecture?.class_id);
+                    
+                    return `
+                        <tr>
+                            <td>${record.date}</td>
+                            <td>${record.time}</td>
+                            <td>${lecture ? lecture.subject : ''}</td>
+                            <td>${classInfo ? classInfo.name : ''}</td>
+                            <td>${student ? student.name : record.roll_number}</td>
+                            <td>${record.status}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+                if (filteredRecords.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="no-data">No records found</td></tr>';
+                }
+            } catch (error) {
+                console.error('Error generating report:', error);
+                tbody.innerHTML = '<tr><td colspan="6" class="error">Error generating report</td></tr>';
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Handle form submission
+        document.getElementById('reportForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            generateReport();
+        });
+
+        // Load initial data
+        document.addEventListener('DOMContentLoaded', loadAllData);
+
+        function logout() {
+            sessionStorage.removeItem('isAdminLoggedIn');
+            window.location.href = 'login.html';
+        }
+    </script>
+    <style>
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-size: 1.2em;
+            color: #666;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .error {
+            text-align: center;
+            padding: 20px;
+            color: #dc3545;
+        }
+
+        #reportTable {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        #reportTable th,
+        #reportTable td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        #reportTable th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+
+        #reportTable tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .reset-btn {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .reset-btn:hover {
+            background-color: #5a6268;
+        }
+    </style>
+</body>
+</html> 

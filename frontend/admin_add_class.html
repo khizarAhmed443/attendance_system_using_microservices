@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Class - Admin Panel</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <a href="home.html" class="navbar-brand">Attendance System</a>
+        <div class="navbar-links">
+            <a href="admin_add_class.html">Add Class</a>
+            <a href="admin_add_student.html">Add Student</a>
+            <a href="admin_add_lecture.html">Add Lecture</a>
+            <a href="admin_mark_attendance.html">Mark Attendance</a>
+            <a href="admin_report.html">Report</a>
+            <a href="#" onclick="logout()">Logout</a>
+        </div>
+    </nav>
+    <div class="container">
+        <header>
+            <h1>Add Class</h1>
+        </header>
+        <div class="panel">
+            <form id="classForm">
+                <div class="form-group">
+                    <label for="className">Class Name</label>
+                    <input type="text" id="className" required>
+                </div>
+                <div class="form-group">
+                    <label for="classDescription">Description</label>
+                    <input type="text" id="classDescription">
+                </div>
+                <button type="submit">Add Class</button>
+            </form>
+            <div id="classList" class="section">
+                <h2>Existing Classes</h2>
+                <table id="classTable">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Description</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="classTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script>
+        // Load classes when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            loadClasses();
+            // Add form submit handler
+            document.getElementById('classForm').addEventListener('submit', addClass);
+        });
+
+        function loadClasses() {
+            fetch('http://localhost:5004/api/classes')
+                .then(response => response.json())
+                .then(classes => {
+                    const tbody = document.getElementById('classTableBody');
+                    tbody.innerHTML = '';
+                    classes.forEach(classItem => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${classItem.name}</td>
+                            <td>${classItem.description}</td>
+                            <td>
+                                <button onclick="editClass(${classItem.id}, '${classItem.name}', '${classItem.description}')" class="btn-edit">Edit</button>
+                                <button onclick="deleteClass(${classItem.id})" class="btn-delete">Delete</button>
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading classes:', error);
+                    alert('Error loading classes. Please try again.');
+                });
+        }
+
+        function addClass(event) {
+            event.preventDefault();
+            const name = document.getElementById('className').value;
+            const description = document.getElementById('classDescription').value;
+
+            fetch('http://localhost:5004/api/classes', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name, description })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('classForm').reset();
+                loadClasses();
+            })
+            .catch(error => {
+                console.error('Error adding class:', error);
+                alert('Error adding class. Please try again.');
+            });
+        }
+
+        function editClass(id, name, description) {
+            // Populate form with class data
+            document.getElementById('className').value = name;
+            document.getElementById('classDescription').value = description;
+            
+            // Change form submit handler
+            const form = document.getElementById('classForm');
+            form.onsubmit = function(event) {
+                event.preventDefault();
+                const updatedName = document.getElementById('className').value;
+                const updatedDescription = document.getElementById('classDescription').value;
+
+                fetch(`http://localhost:5004/api/classes/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        name: updatedName, 
+                        description: updatedDescription 
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    form.reset();
+                    form.onsubmit = addClass; // Reset form handler
+                    loadClasses();
+                })
+                .catch(error => {
+                    console.error('Error updating class:', error);
+                    alert('Error updating class. Please try again.');
+                });
+            };
+        }
+
+        function deleteClass(id) {
+            if (confirm('Are you sure you want to delete this class?')) {
+                fetch(`http://localhost:5004/api/classes/${id}`, {
+                    method: 'DELETE'
+                })
+                .then(response => {
+                    if (response.ok) {
+                        loadClasses();
+                    } else {
+                        throw new Error('Failed to delete class');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error deleting class:', error);
+                    alert('Error deleting class. Please try again.');
+                });
+            }
+        }
+
+        function logout() {
+            sessionStorage.removeItem('isAdminLoggedIn');
+            window.location.href = 'login.html';
+        }
+    </script>
+</body>
+</html> 

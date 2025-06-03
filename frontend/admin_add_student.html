@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Student - Admin Panel</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <a href="home.html" class="navbar-brand">Attendance System</a>
+        <div class="navbar-links">
+            <a href="admin_add_class.html">Add Class</a>
+            <a href="admin_add_student.html">Add Student</a>
+            <a href="admin_add_lecture.html">Add Lecture</a>
+            <a href="admin_mark_attendance.html">Mark Attendance</a>
+            <a href="admin_report.html">Report</a>
+            <a href="#" onclick="logout()">Logout</a>
+        </div>
+    </nav>
+    <div class="container">
+        <header>
+            <h1>Add Student</h1>
+        </header>
+        <div class="panel">
+            <form id="studentForm" onsubmit="return addStudent(event)">
+                <div class="form-group">
+                    <label for="rollNumber">Roll Number</label>
+                    <input type="text" id="rollNumber" required>
+                </div>
+                <div class="form-group">
+                    <label for="studentName">Full Name</label>
+                    <input type="text" id="studentName" required>
+                </div>
+                <div class="form-group">
+                    <label for="classSelect">Class</label>
+                    <select id="classSelect" required>
+                        <option value="">Select Class</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="studentEmail">Email</label>
+                    <input type="email" id="studentEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="studentPhone">Phone Number</label>
+                    <input type="tel" id="studentPhone" required>
+                </div>
+                <div class="form-group">
+                    <label for="studentAddress">Address</label>
+                    <input type="text" id="studentAddress" required>
+                </div>
+                <button type="submit">Add Student</button>
+            </form>
+
+            <div id="studentList" class="section">
+                <h2>Existing Students</h2>
+                <table id="studentTable">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Roll Number</th>
+                            <th>Class</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script>
+        // Load classes and students when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadClasses();
+            loadStudents();
+        });
+
+        function loadClasses() {
+            fetch('http://localhost:5004/api/classes')
+                .then(response => response.json())
+                .then(classes => {
+                    const classSelect = document.getElementById('classSelect');
+                    classSelect.innerHTML = '<option value="">Select Class</option>';
+                    classes.forEach(classItem => {
+                        const option = document.createElement('option');
+                        option.value = classItem.id;
+                        option.textContent = classItem.name;
+                        classSelect.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading classes:', error);
+                    alert('Error loading classes. Please try again.');
+                });
+        }
+
+        function loadStudents() {
+            fetch('http://localhost:5001/api/students')
+                .then(response => response.json())
+                .then(students => {
+                    const tbody = document.getElementById('studentTableBody');
+                    tbody.innerHTML = '';
+                    students.forEach(student => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${student.name}</td>
+                            <td>${student.roll_number}</td>
+                            <td>${student.class_name || 'N/A'}</td>
+                            <td>
+                                <button onclick="editStudent('${student.roll_number}', '${student.name}', ${student.class_id}, '${student.email}', '${student.phone}', '${student.address}')" class="btn-edit">Edit</button>
+                                <button onclick="deleteStudent('${student.roll_number}')" class="btn-delete">Delete</button>
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading students:', error);
+                    alert('Error loading students. Please try again.');
+                });
+        }
+
+        function addStudent(event) {
+            event.preventDefault();
+            const rollNumber = document.getElementById('rollNumber').value;
+            const name = document.getElementById('studentName').value;
+            const classId = document.getElementById('classSelect').value;
+            const email = document.getElementById('studentEmail').value;
+            const phone = document.getElementById('studentPhone').value;
+            const address = document.getElementById('studentAddress').value;
+
+            console.log('Submitting student data:', {
+                roll_number: rollNumber,
+                name: name,
+                class_id: classId,
+                email: email,
+                phone: phone,
+                address: address
+            });
+
+            fetch('http://localhost:5001/api/students', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    roll_number: rollNumber,
+                    name: name,
+                    class_id: classId,
+                    email: email,
+                    phone: phone,
+                    address: address
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(err.error || 'Failed to add student');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Student added successfully:', data);
+                document.getElementById('studentForm').reset();
+                loadStudents();
+            })
+            .catch(error => {
+                console.error('Error adding student:', error);
+                alert(error.message || 'Error adding student. Please try again.');
+            });
+
+            return false;
+        }
+
+        function editStudent(rollNumber, name, classId, email, phone, address) {
+            // Populate form with student data
+            document.getElementById('rollNumber').value = rollNumber;
+            document.getElementById('studentName').value = name;
+            document.getElementById('classSelect').value = classId;
+            document.getElementById('studentEmail').value = email;
+            document.getElementById('studentPhone').value = phone;
+            document.getElementById('studentAddress').value = address;
+            
+            // Change form submit handler
+            const form = document.getElementById('studentForm');
+            form.onsubmit = function(event) {
+                event.preventDefault();
+                const updatedName = document.getElementById('studentName').value;
+                const updatedClassId = document.getElementById('classSelect').value;
+                const updatedEmail = document.getElementById('studentEmail').value;
+                const updatedPhone = document.getElementById('studentPhone').value;
+                const updatedAddress = document.getElementById('studentAddress').value;
+
+                fetch(`http://localhost:5001/api/students/${rollNumber}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        name: updatedName,
+                        class_id: updatedClassId,
+                        email: updatedEmail,
+                        phone: updatedPhone,
+                        address: updatedAddress
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => {
+                            throw new Error(err.error || 'Failed to update student');
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    form.reset();
+                    form.onsubmit = addStudent; // Reset form handler
+                    loadStudents();
+                })
+                .catch(error => {
+                    console.error('Error updating student:', error);
+                    alert(error.message || 'Error updating student. Please try again.');
+                });
+                return false;
+            };
+        }
+
+        function deleteStudent(rollNumber) {
+            if (confirm('Are you sure you want to delete this student?')) {
+                fetch(`http://localhost:5001/api/students/${rollNumber}`, {
+                    method: 'DELETE'
+                })
+                .then(response => {
+                    if (response.ok) {
+                        loadStudents();
+                    } else {
+                        throw new Error('Failed to delete student');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error deleting student:', error);
+                    alert('Error deleting student. Please try again.');
+                });
+            }
+        }
+
+        function logout() {
+            sessionStorage.removeItem('isAdminLoggedIn');
+            window.location.href = 'login.html';
+        }
+    </script>
+</body>
+</html> 

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mark Attendance - Admin Panel</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <a href="home.html" class="navbar-brand">Attendance System</a>
+        <div class="navbar-links">
+            <a href="admin_add_class.html">Add Class</a>
+            <a href="admin_add_student.html">Add Student</a>
+            <a href="admin_add_lecture.html">Add Lecture</a>
+            <a href="admin_mark_attendance.html">Mark Attendance</a>
+            <a href="admin_report.html">Report</a>
+            <a href="#" onclick="logout()">Logout</a>
+        </div>
+    </nav>
+    <div class="container">
+        <header>
+            <h1>Mark Attendance</h1>
+        </header>
+        <div class="panel">
+            <form id="attendanceForm">
+                <div class="form-group">
+                    <label for="classSelect">Class</label>
+                    <select id="classSelect" required>
+                        <option value="">Select Class</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="lectureSelect">Lecture</label>
+                    <select id="lectureSelect" required disabled>
+                        <option value="">Select Lecture</option>
+                    </select>
+                </div>
+                <div id="studentList" class="student-list">
+                    <!-- Student checkboxes will be added here -->
+                </div>
+                <button type="submit">Mark Attendance</button>
+            </form>
+        </div>
+    </div>
+    <script>
+        // Cache for storing data
+        const dataCache = {
+            classes: [],
+            students: [],
+            lectures: []
+        };
+
+        // Load classes for dropdown
+        async function loadClasses() {
+            const classSelect = document.getElementById('classSelect');
+            try {
+                const response = await fetch('http://localhost:5004/api/classes');
+                const classes = await response.json();
+                dataCache.classes = classes;
+                
+                classSelect.innerHTML = '<option value="">Select Class</option>';
+                classes.forEach(cls => {
+                    classSelect.innerHTML += `<option value="${cls.id}">${cls.name}</option>`;
+                });
+            } catch (err) {
+                console.error('Error loading classes:', err);
+                classSelect.innerHTML = '<option value="">Error loading classes</option>';
+            }
+        }
+
+        // Load students and lectures
+        async function loadStudentsAndLectures() {
+            try {
+                const [studentsResponse, lecturesResponse] = await Promise.all([
+                    fetch('http://localhost:5001/api/students'),
+                    fetch('http://localhost:5002/api/lectures')
+                ]);
+                
+                dataCache.students = await studentsResponse.json();
+                dataCache.lectures = await lecturesResponse.json();
+            } catch (err) {
+                console.error('Error loading data:', err);
+            }
+        }
+
+        // When class changes, update lectures and students
+        document.getElementById('classSelect').addEventListener('change', function() {
+            const classId = this.value;
+            const lectureSelect = document.getElementById('lectureSelect');
+            const studentList = document.getElementById('studentList');
+            
+            lectureSelect.innerHTML = '<option value="">Select Lecture</option>';
+            lectureSelect.disabled = !classId;
+
+            if (!classId) {
+                studentList.innerHTML = '';
+                return;
+            }
+
+            // Filter lectures for selected class
+            const classLectures = dataCache.lectures.filter(l => l.class_id == classId);
+            
+            if (classLectures.length === 0) {
+                lectureSelect.innerHTML = '<option value="">No lectures available</option>';
+                studentList.innerHTML = '<div class="message">No lectures available for this class</div>';
+                return;
+            }
+
+            // Group lectures by subject
+            const lecturesBySubject = classLectures.reduce((acc, lecture) => {
+                if (!acc[lecture.subject]) {
+                    acc[lecture.subject] = [];
+                }
+                acc[lecture.subject].push(lecture);
+                return acc;
+            }, {});
+
+            // Populate lecture select with subjects
+            Object.keys(lecturesBySubject).forEach(subject => {
+                const option = document.createElement('optgroup');
+                option.label = subject;
+                lecturesBySubject[subject].forEach(lecture => {
+                    const lectureOption = document.createElement('option');
+                    lectureOption.value = lecture.id;
+                    lectureOption.textContent = `${lecture.date} ${lecture.time}`;
+                    option.appendChild(lectureOption);
+                });
+                lectureSelect.appendChild(option);
+            });
+
+            // Filter and display students for class
+            const classStudents = dataCache.students.filter(s => s.class_id == classId);
+
+            if (classStudents.length === 0) {
+                studentList.innerHTML = '<div class="message">No students found in this class</div>';
+                return;
+            }
+
+            studentList.innerHTML = '<h3>Select Present Students:</h3>';
+            classStudents.forEach(student => {
+                studentList.innerHTML += `
+                    <div class="student-item">
+                        <input type="checkbox" id="student_${student.roll_number}" value="${student.roll_number}" name="students">
+                        <label for="student_${student.roll_number}">${student.name} (${student.roll_number})</label>
+                    </div>
+                `;
+            });
+        });
+
+        // Handle form submission
+        document.getElementById('attendanceForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const lectureId = document.getElementById('lectureSelect').value;
+            const selectedStudents = Array.from(document.querySelectorAll('input[name="students"]:checked'))
+                .map(checkbox => checkbox.value);
+
+            if (!lectureId || selectedStudents.length === 0) {
+                alert('Please select a lecture and at least one student');
+                return;
+            }
+
+            try {
+                const lecture = dataCache.lectures.find(l => l.id == lectureId);
+                const classObj = dataCache.classes.find(c => c.id == lecture.class_id);
+
+                // Mark attendance for each selected student
+                const attendancePromises = selectedStudents.map(rollNumber => {
+                    const student = dataCache.students.find(s => s.roll_number === rollNumber);
+                    return fetch('http://localhost:5003/api/attendance', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            lecture_id: lectureId,
+                            roll_number: rollNumber,
+                            status: 'present',
+                            date: lecture.date,
+                            time: lecture.time,
+                            subject: lecture.subject,
+                            class_name: classObj.name,
+                            student_name: student.name
+                        })
+                    });
+                });
+
+                await Promise.all(attendancePromises);
+                alert('Attendance marked successfully!');
+                this.reset();
+                document.getElementById('studentList').innerHTML = '';
+            } catch (error) {
+                console.error('Error marking attendance:', error);
+                alert('Error marking attendance. Please try again.');
+            }
+        });
+
+        // Load initial data
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadClasses();
+            await loadStudentsAndLectures();
+        });
+
+        function logout() {
+            sessionStorage.removeItem('isAdminLoggedIn');
+            window.location.href = 'login.html';
+        }
+    </script>
+
+    <style>
+    .attendance-group {
+        margin-bottom: 20px;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+    }
+
+    .attendance-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+    }
+
+    .attendance-table th,
+    .attendance-table td {
+        padding: 8px;
+        border: 1px solid #ddd;
+        text-align: left;
+    }
+
+    .attendance-table th {
+        background-color: #f5f5f5;
+    }
+
+    .message {
+        padding: 10px;
+        margin: 10px 0;
+        background-color: #f8f9fa;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        text-align: center;
+    }
+
+    .error-message {
+        color: #dc3545;
+        padding: 10px;
+        margin: 10px 0;
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+        border-radius: 4px;
+        text-align: center;
+    }
+    </style>
+</body>
+</html> 

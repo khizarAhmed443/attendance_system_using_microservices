@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Attendance Management System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Student Attendance Management System</h1>
+            <div class="role-selector">
+                <button onclick="switchRole('admin')" class="active" id="adminBtn">Admin Panel</button>
+                <button onclick="switchRole('user')" id="userBtn">User Panel</button>
+                <button onclick="logout()" id="logoutBtn" style="display: none;">Logout</button>
+            </div>
+        </header>
+
+        <!-- Admin Panel -->
+        <div id="adminPanel" class="panel">
+            <div class="section">
+                <h2>Create Lecture Slot</h2>
+                <form id="lectureForm">
+                    <input type="date" id="lectureDate" required>
+                    <input type="time" id="lectureTime" required>
+                    <input type="text" id="lectureSubject" placeholder="Subject" required>
+                    <button type="submit">Create Lecture</button>
+                </form>
+            </div>
+
+            <div class="section">
+                <h2>Add Student</h2>
+                <form id="studentForm">
+                    <input type="text" id="rollNumber" placeholder="Roll Number" required>
+                    <input type="text" id="studentName" placeholder="Student Name" required>
+                    <input type="text" id="className" placeholder="Class" required>
+                    <button type="submit">Add Student</button>
+                </form>
+            </div>
+
+            <div class="section">
+                <h2>Mark Attendance</h2>
+                <form id="attendanceForm">
+                    <select id="lectureSelect" required>
+                        <option value="">Select Lecture</option>
+                    </select>
+                    <div id="studentList" class="student-list">
+                        <!-- Student checkboxes will be added here -->
+                    </div>
+                    <button type="submit">Mark Attendance</button>
+                </form>
+            </div>
+
+            <div class="section">
+                <h2>View Attendance Report</h2>
+                <div class="report-controls">
+                    <select id="reportType">
+                        <option value="lecture">By Lecture</option>
+                        <option value="student">By Student</option>
+                    </select>
+                    <select id="reportFilter">
+                        <!-- Options will be populated dynamically -->
+                    </select>
+                    <button onclick="generateReport()">Generate Report</button>
+                </div>
+                <div id="reportResult" class="report-result">
+                    <!-- Report will be displayed here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- User Panel -->
+        <div id="userPanel" class="panel" style="display: none;">
+            <div class="section">
+                <h2>View Attendance</h2>
+                <div class="search-controls">
+                    <input type="text" id="searchRollNumber" placeholder="Enter Roll Number">
+                    <button onclick="searchAttendance()">Search</button>
+                </div>
+                <div class="filter-controls">
+                    <select id="sortOrder" onchange="sortAttendance()">
+                        <option value="asc">Time (Ascending)</option>
+                        <option value="desc">Time (Descending)</option>
+                    </select>
+                    <select id="statusFilter" onchange="filterAttendance()">
+                        <option value="all">All Status</option>
+                        <option value="present">Present</option>
+                        <option value="absent">Absent</option>
+                    </select>
+                </div>
+                <div id="attendanceList" class="attendance-list">
+                    <!-- Attendance records will be displayed here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+    <script>
+        // Check if user is logged in
+        function checkLogin() {
+            const isAdminLoggedIn = sessionStorage.getItem('isAdminLoggedIn');
+            if (!isAdminLoggedIn) {
+                window.location.href = 'login.html';
+            } else {
+                document.getElementById('logoutBtn').style.display = 'block';
+            }
+        }
+
+        // Logout function
+        function logout() {
+            sessionStorage.removeItem('isAdminLoggedIn');
+            window.location.href = 'login.html';
+        }
+
+        // Check login status when page loads
+        window.addEventListener('load', checkLogin);
+    </script>
+</body>
+</html> 

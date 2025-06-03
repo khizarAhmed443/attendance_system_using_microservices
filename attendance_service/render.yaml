@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: attendance-service
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: STUDENT_SERVICE_URL
+        value: your-student-service-url
+      - key: LECTURE_SERVICE_URL
+        value: your-lecture-service-url
+      - key: CLASS_SERVICE_URL
+        value: your-class-service-url 

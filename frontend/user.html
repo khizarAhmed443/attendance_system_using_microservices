@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Attendance - Student Attendance System</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .navbar {
+            background-color: #2c3e50;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .navbar-brand {
+            color: white;
+            text-decoration: none;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .navbar-links {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .navbar-links a {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+
+        .navbar-links a:hover {
+            background-color: #34495e;
+        }
+
+        .search-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .search-controls input,
+        .search-controls select,
+        .search-controls button {
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .search-controls button {
+            background-color: #2c3e50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .search-controls button:hover {
+            background-color: #34495e;
+        }
+
+        .attendance-list {
+            margin-top: 2rem;
+        }
+
+        .attendance-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .attendance-table th,
+        .attendance-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .attendance-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+
+        .attendance-table tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .status-present {
+            color: #27ae60;
+        }
+
+        .status-absent {
+            color: #e74c3c;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="home.html" class="navbar-brand">Attendance System</a>
+        <div class="navbar-links">
+            <a href="home.html">Home</a>
+            <a href="user.html">View Attendance</a>
+            <a href="login.html">Admin Login</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="section">
+            <h2>View Attendance</h2>
+            <div class="search-controls">
+                <input type="text" id="searchRollNumber" placeholder="Enter Roll Number">
+                <button onclick="searchAttendance()">Search</button>
+                <button onclick="showAllAttendance()">Show All</button>
+                <select id="sortOrder" onchange="sortAttendance()">
+                    <option value="asc">Time (Ascending)</option>
+                    <option value="desc">Time (Descending)</option>
+                </select>
+                <select id="statusFilter" onchange="filterAttendance()">
+                    <option value="all">All Status</option>
+                    <option value="present">Present</option>
+                    <option value="absent">Absent</option>
+                </select>
+            </div>
+            <div id="attendanceList" class="attendance-list">
+                <table class="attendance-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Subject</th>
+                            <th>Roll Number</th>
+                            <th>Student Name</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendanceTableBody">
+                        <!-- Attendance records will be displayed here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 

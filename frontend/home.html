@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home - Attendance System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <a href="home.html" class="navbar-brand">Attendance System</a>
+        <div class="navbar-links">
+            <a href="login.html">Admin Login</a>
+        </div>
+    </nav>
+    <div class="container">
+        <header>
+            <h1>View Attendance</h1>
+        </header>
+        <div class="panel">
+            <div class="filter-controls">
+                <div class="form-group">
+                    <label for="classFilter">Select Class:</label>
+                    <select id="classFilter">
+                        <option value="">All Classes</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="subjectFilter">Select Subject:</label>
+                    <select id="subjectFilter">
+                        <option value="">All Subjects</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="rollNumber">Roll Number:</label>
+                    <input type="text" id="rollNumber" placeholder="Enter roll number">
+                </div>
+                <button onclick="searchAttendance()">Search</button>
+                <button onclick="resetFilters()">Reset</button>
+            </div>
+            <div class="attendance-result">
+                <div id="loadingIndicator" class="loading" style="display: none;">Loading...</div>
+                <table class="attendance-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Subject</th>
+                            <th>Class</th>
+                            <th>Student Name</th>
+                            <th>Roll Number</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendanceTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script>
+        // Cache for storing data
+        const dataCache = {
+            classes: { data: [], timestamp: 0 },
+            attendance: { data: [], timestamp: 0 },
+            lectures: { data: [], timestamp: 0 },
+            students: { data: {}, timestamp: 0 }  // Changed to object for faster lookups
+        };
+
+        // Cache duration in milliseconds (5 minutes)
+        const CACHE_DURATION = 5 * 60 * 1000;
+
+        // Loading indicator functions
+        function showLoading() {
+            document.getElementById('loadingIndicator').style.display = 'block';
+            document.querySelector('.attendance-table').style.display = 'none';
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingIndicator').style.display = 'none';
+            document.querySelector('.attendance-table').style.display = 'table';
+        }
+
+        // Fetch data with caching
+        async function fetchWithCache(url, cacheKey, transform = data => data) {
+            const now = Date.now();
+            if (dataCache[cacheKey].data.length > 0 && (now - dataCache[cacheKey].timestamp < CACHE_DURATION)) {
+                return dataCache[cacheKey].data;
+            }
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const data = await response.json();
+                dataCache[cacheKey].data = transform(data);
+                dataCache[cacheKey].timestamp = now;
+                return dataCache[cacheKey].data;
+            } catch (error) {
+                console.error(`Error fetching ${cacheKey}:`, error);
+                throw error;
+            }
+        }
+
+        // Load initial data
+        async function loadInitialData() {
+            showLoading();
+            try {
+                // Load all data in parallel
+                const [classes, attendance, lectures] = await Promise.all([
+                    fetchWithCache('http://localhost:5004/api/classes', 'classes'),
+                    fetchWithCache('http://localhost:5003/api/attendance', 'attendance'),
+                    fetchWithCache('http://localhost:5002/api/lectures', 'lectures')
+                ]);
+
+                // Create lookup maps for faster access
+                const classMap = new Map(classes.map(c => [c.id, c]));
+                const lectureMap = new Map(lectures.map(l => [l.id, l]));
+
+                // Populate class dropdown
+                const classFilter = document.getElementById('classFilter');
+                classFilter.innerHTML = '<option value="">All Classes</option>';
+                classes.forEach(classItem => {
+                    const option = document.createElement('option');
+                    option.value = classItem.id;
+                    option.textContent = classItem.name;
+                    classFilter.appendChild(option);
+                });
+
+                // Enrich attendance records with class and lecture data
+                const enrichedAttendance = attendance.map(record => ({
+                    ...record,
+                    class_name: classMap.get(record.class_id)?.name || 'N/A',
+                    subject: lectureMap.get(record.lecture_id)?.subject || 'N/A'
+                }));
+
+                // Display all attendance records
+                displayAttendanceRecords(enrichedAttendance);
+            } catch (error) {
+                console.error('Error loading initial data:', error);
+                alert('Error loading data. Please refresh the page.');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // When class changes
+        document.getElementById('classFilter').addEventListener('change', async function() {
+            const classId = this.value;
+            const subjectFilter = document.getElementById('subjectFilter');
+            subjectFilter.innerHTML = '<option value="">All Subjects</option>';
+            
+            if (classId) {
+                try {
+                    // Use cached lectures data
+                    const lectures = dataCache.lectures.data;
+                    const subjects = [...new Set(lectures
+                        .filter(lecture => lecture.class_id == classId)
+                        .map(lecture => lecture.subject))];
+                    
+                    subjects.forEach(subject => {
+                        const option = document.createElement('option');
+                        option.value = subject;
+                        option.textContent = subject;
+                        subjectFilter.appendChild(option);
+                    });
+                } catch (error) {
+                    console.error('Error loading subjects:', error);
+                }
+            }
+        });
+
+        // Function to display attendance records
+        function displayAttendanceRecords(records) {
+            const tbody = document.getElementById('attendanceTableBody');
+            tbody.innerHTML = '';
+            
+            if (!records || records.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = '<td colspan="7" class="no-data">No attendance records found</td>';
+                tbody.appendChild(row);
+                return;
+            }
+
+            // Sort records by date and time
+            records.sort((a, b) => {
+                const dateA = new Date(`${a.date} ${a.time}`);
+                const dateB = new Date(`${b.date} ${b.time}`);
+                return dateB - dateA;
+            });
+
+            // Create document fragment for better performance
+            const fragment = document.createDocumentFragment();
+            
+            records.forEach(record => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${record.date || 'N/A'}</td>
+                    <td>${record.time || 'N/A'}</td>
+                    <td>${record.subject || 'N/A'}</td>
+                    <td>${record.class_name || 'N/A'}</td>
+                    <td>${record.student_name || 'N/A'}</td>
+                    <td>${record.roll_number || 'N/A'}</td>
+                    <td><span class="status-${(record.status || '').toLowerCase()}">${record.status || 'N/A'}</span></td>
+                `;
+                fragment.appendChild(row);
+            });
+
+            tbody.appendChild(fragment);
+        }
+
+        // Function to search attendance
+        async function searchAttendance() {
+            const classId = document.getElementById('classFilter').value;
+            const subject = document.getElementById('subjectFilter').value;
+            const rollNumber = document.getElementById('rollNumber').value;
+
+            showLoading();
+
+            try {
+                // Use cached attendance data
+                const attendance = dataCache.attendance.data;
+                
+                // Filter records
+                let filteredRecords = attendance.filter(record => {
+                    if (classId && record.class_id != classId) return false;
+                    if (subject && record.subject !== subject) return false;
+                    if (rollNumber && record.roll_number !== rollNumber) return false;
+                    return true;
+                });
+
+                displayAttendanceRecords(filteredRecords);
+            } catch (error) {
+                console.error('Error searching attendance:', error);
+                alert('Error searching attendance. Please try again.');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Function to reset filters
+        function resetFilters() {
+            document.getElementById('classFilter').value = '';
+            document.getElementById('subjectFilter').value = '';
+            document.getElementById('rollNumber').value = '';
+            displayAttendanceRecords(dataCache.attendance.data);
+        }
+
+        // Load initial data when page loads
+        document.addEventListener('DOMContentLoaded', loadInitialData);
+    </script>
+    <style>
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-size: 1.2em;
+            color: #666;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .attendance-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .attendance-table th,
+        .attendance-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .attendance-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+
+        .attendance-table tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        .status-present {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .status-absent {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .filter-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .form-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .form-group select,
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</body>
+</html> 
