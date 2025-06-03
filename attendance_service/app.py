@@ -85,7 +85,7 @@ class Attendance(db.Model):
 # Create tables
 with app.app_context():
     db.create_all()
-    print("Database initialized at:", os.path.join(basedir, 'attendance.db'))
+    print("Database initialized at:", os.path.join(os.path.dirname(os.path.abspath(__file__)), 'attendance.db'))
 
 @app.route('/api/attendance', methods=['GET'])
 def get_attendance():
