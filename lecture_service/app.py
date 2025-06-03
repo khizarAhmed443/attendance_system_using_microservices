@@ -46,7 +46,7 @@ class Lecture(db.Model):
 with app.app_context():
     db.drop_all()  # Drop existing tables
     db.create_all()  # Create new tables with updated schema
-    print("Database initialized at:", os.path.join(basedir, 'lectures.db'))
+    print("Database initialized at:", os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lectures.db'))
 
 @app.route('/api/lectures', methods=['GET'])
 def get_lectures():
