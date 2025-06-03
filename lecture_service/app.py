@@ -109,5 +109,13 @@ def delete_lecture(lecture_id):
     db.session.commit()
     return '', 204
 
+@app.route('/api/lectures/class/<int:class_id>', methods=['GET'])
+def get_lectures_by_class(class_id):
+    try:
+        lectures = Lecture.query.filter_by(class_id=class_id).all()
+        return jsonify([lecture.to_dict() for lecture in lectures])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(port=5002, debug=True) 
