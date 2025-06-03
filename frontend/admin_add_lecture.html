@@ -25,8 +25,8 @@
         <div class="panel">
             <form id="lectureForm">
                 <div class="form-group">
-                    <label for="lectureName">Lecture Name</label>
-                    <input type="text" id="lectureName" required>
+                    <label for="lectureSubject">Subject</label>
+                    <input type="text" id="lectureSubject" required>
                 </div>
                 <div class="form-group">
                     <label for="lectureClass">Class</label>
@@ -35,21 +35,12 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="lectureTime">Time</label>
-                    <input type="time" id="lectureTime" required>
+                    <label for="lectureDate">Date</label>
+                    <input type="date" id="lectureDate" required>
                 </div>
                 <div class="form-group">
-                    <label for="lectureDay">Day</label>
-                    <select id="lectureDay" required>
-                        <option value="">Select Day</option>
-                        <option value="Monday">Monday</option>
-                        <option value="Tuesday">Tuesday</option>
-                        <option value="Wednesday">Wednesday</option>
-                        <option value="Thursday">Thursday</option>
-                        <option value="Friday">Friday</option>
-                        <option value="Saturday">Saturday</option>
-                        <option value="Sunday">Sunday</option>
-                    </select>
+                    <label for="lectureTime">Time</label>
+                    <input type="time" id="lectureTime" required>
                 </div>
                 <button type="submit">Add Lecture</button>
             </form>
@@ -58,10 +49,10 @@
                 <table id="lectureTable">
                     <thead>
                         <tr>
-                            <th>Name</th>
+                            <th>Subject</th>
                             <th>Class</th>
+                            <th>Date</th>
                             <th>Time</th>
-                            <th>Day</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -108,12 +99,12 @@
                     lectures.forEach(lecture => {
                         const row = document.createElement('tr');
                         row.innerHTML = `
-                            <td>${lecture.name}</td>
+                            <td>${lecture.subject}</td>
                             <td>${lecture.class_name || 'Not Assigned'}</td>
+                            <td>${lecture.date}</td>
                             <td>${lecture.time}</td>
-                            <td>${lecture.day}</td>
                             <td>
-                                <button onclick="editLecture(${lecture.id}, '${lecture.name}', ${lecture.class_id || 'null'}, '${lecture.time}', '${lecture.day}')" class="btn-edit">Edit</button>
+                                <button onclick="editLecture(${lecture.id}, '${lecture.subject}', ${lecture.class_id || 'null'}, '${lecture.date}', '${lecture.time}')" class="btn-edit">Edit</button>
                                 <button onclick="deleteLecture(${lecture.id})" class="btn-delete">Delete</button>
                             </td>
                         `;
@@ -128,44 +119,56 @@
 
         function addLecture(event) {
             event.preventDefault();
-            const name = document.getElementById('lectureName').value;
+            const subject = document.getElementById('lectureSubject').value;
             const classId = document.getElementById('lectureClass').value;
+            const date = document.getElementById('lectureDate').value;
             const time = document.getElementById('lectureTime').value;
-            const day = document.getElementById('lectureDay').value;
 
             fetch(`${API_CONFIG.LECTURE_SERVICE}/api/lectures`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ name, class_id: classId, time, day })
+                body: JSON.stringify({
+                    subject,
+                    class_id: classId,
+                    date,
+                    time
+                })
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.error || 'Failed to add lecture');
+                    });
+                }
+                return response.json();
+            })
             .then(data => {
                 document.getElementById('lectureForm').reset();
                 loadLectures();
             })
             .catch(error => {
                 console.error('Error adding lecture:', error);
-                alert('Error adding lecture. Please try again.');
+                alert(error.message || 'Error adding lecture. Please try again.');
             });
         }
 
-        function editLecture(id, name, classId, time, day) {
+        function editLecture(id, subject, classId, date, time) {
             // Populate form with lecture data
-            document.getElementById('lectureName').value = name;
+            document.getElementById('lectureSubject').value = subject;
             document.getElementById('lectureClass').value = classId;
+            document.getElementById('lectureDate').value = date;
             document.getElementById('lectureTime').value = time;
-            document.getElementById('lectureDay').value = day;
             
             // Change form submit handler
             const form = document.getElementById('lectureForm');
             form.onsubmit = function(event) {
                 event.preventDefault();
-                const updatedName = document.getElementById('lectureName').value;
+                const updatedSubject = document.getElementById('lectureSubject').value;
                 const updatedClassId = document.getElementById('lectureClass').value;
+                const updatedDate = document.getElementById('lectureDate').value;
                 const updatedTime = document.getElementById('lectureTime').value;
-                const updatedDay = document.getElementById('lectureDay').value;
 
                 fetch(`${API_CONFIG.LECTURE_SERVICE}/api/lectures/${id}`, {
                     method: 'PUT',
@@ -173,13 +176,20 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ 
-                        name: updatedName, 
+                        subject: updatedSubject,
                         class_id: updatedClassId,
-                        time: updatedTime,
-                        day: updatedDay
+                        date: updatedDate,
+                        time: updatedTime
                     })
                 })
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(data => {
+                            throw new Error(data.error || 'Failed to update lecture');
+                        });
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     form.reset();
                     form.onsubmit = addLecture; // Reset form handler
@@ -187,7 +197,7 @@
                 })
                 .catch(error => {
                     console.error('Error updating lecture:', error);
-                    alert('Error updating lecture. Please try again.');
+                    alert(error.message || 'Error updating lecture. Please try again.');
                 });
             };
         }
@@ -217,4 +227,5 @@
         }
     </script>
 </body>
+</html> 
 </html> 
