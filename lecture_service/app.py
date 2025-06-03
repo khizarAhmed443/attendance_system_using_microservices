@@ -27,7 +27,7 @@ class Lecture(db.Model):
         # Fetch class name from class service
         class_name = ''
         try:
-            resp = requests.get(f'http://localhost:5004/api/classes/{self.class_id}')
+            resp = requests.get(f'https://class-service-kacm.onrender.com/api/classes/{self.class_id}')
             if resp.status_code == 200:
                 class_name = resp.json().get('name', '')
         except Exception:

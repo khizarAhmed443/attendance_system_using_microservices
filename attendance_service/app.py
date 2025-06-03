@@ -25,9 +25,9 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///attendance.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Service URLs
-STUDENT_SERVICE_URL = os.getenv('STUDENT_SERVICE_URL', 'http://localhost:5001')
-LECTURE_SERVICE_URL = os.getenv('LECTURE_SERVICE_URL', 'http://localhost:5002')
-CLASS_SERVICE_URL = os.getenv('CLASS_SERVICE_URL', 'http://localhost:5004')
+STUDENT_SERVICE_URL = os.getenv('STUDENT_SERVICE_URL', 'https://student-service-8gyd.onrender.com')
+LECTURE_SERVICE_URL = os.getenv('LECTURE_SERVICE_URL', 'https://lecture-service.onrender.com')
+CLASS_SERVICE_URL = os.getenv('CLASS_SERVICE_URL', 'https://class-service-kacm.onrender.com')
 
 db = SQLAlchemy(app)
 
