@@ -126,5 +126,13 @@ def update_student(roll_number):
         db.session.rollback()
         return jsonify({'error': str(e)}), 400
 
+@app.route('/api/students/class/<int:class_id>', methods=['GET'])
+def get_students_by_class(class_id):
+    try:
+        students = Student.query.filter_by(class_id=class_id).all()
+        return jsonify([student.to_dict() for student in students])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(port=5001, debug=True) 
