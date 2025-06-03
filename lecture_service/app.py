@@ -6,7 +6,7 @@ from datetime import datetime
 import requests
 
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": ["https://strong-medovik-58a65d.netlify.app", "http://localhost:3000"]}})
+CORS(app, resources={r"/api/*": {"origins": ["https://comfy-lokum-190901.netlify.app", "http://localhost:3000"]}})
 
 # Configure SQLite database
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///lectures.db'
