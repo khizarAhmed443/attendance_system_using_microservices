@@ -110,13 +110,21 @@
                 url += `?${params.toString()}`;
             }
 
+            console.log('Fetching attendance from:', url); // Debug log
+
             fetch(url)
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(records => {
+                    console.log('Received records:', records); // Debug log
                     const tbody = document.getElementById('attendanceTableBody');
                     tbody.innerHTML = '';
 
-                    if (records.length === 0) {
+                    if (!records || records.length === 0) {
                         const row = document.createElement('tr');
                         row.innerHTML = '<td colspan="5" class="no-data">No records found</td>';
                         tbody.appendChild(row);
@@ -133,17 +141,17 @@
                     records.forEach(record => {
                         const row = document.createElement('tr');
                         row.innerHTML = `
-                            <td>${record.date}</td>
-                            <td>${record.time}</td>
-                            <td>${record.subject}</td>
-                            <td>${record.student_name}</td>
-                            <td>${record.status}</td>
+                            <td>${record.date || 'N/A'}</td>
+                            <td>${record.time || 'N/A'}</td>
+                            <td>${record.subject || 'N/A'}</td>
+                            <td>${record.student_name || 'N/A'}</td>
+                            <td>${record.status || 'N/A'}</td>
                         `;
                         tbody.appendChild(row);
                     });
                 })
                 .catch(error => {
-                    console.error('Error loading attendance:', error);
+                    console.error('Error loading attendance records:', error);
                     alert('Error loading attendance records. Please try again.');
                 });
         }
