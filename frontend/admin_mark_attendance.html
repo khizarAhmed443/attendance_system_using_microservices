@@ -74,26 +74,33 @@
 
         // Load lectures when class is selected
         document.getElementById('classSelect').addEventListener('change', function() {
-            const classId = this.value;
-            if (classId) {
-                fetch(`${API_CONFIG.LECTURE_SERVICE}/api/lectures/class/${classId}`)
-                    .then(response => response.json())
-                    .then(lectures => {
-                        const select = document.getElementById('lectureSelect');
-                        select.innerHTML = '<option value="">Select Lecture</option>';
-                        lectures.forEach(lecture => {
-                            const option = document.createElement('option');
-                            option.value = lecture.id;
-                            option.textContent = `${lecture.name} (${lecture.day} at ${lecture.time})`;
-                            select.appendChild(option);
-                        });
-                    })
-                    .catch(error => {
-                        console.error('Error loading lectures:', error);
-                        alert('Error loading lectures. Please try again.');
-                    });
-            }
+            loadLectures();
         });
+
+        function loadLectures() {
+            const classId = document.getElementById('classSelect').value;
+            if (!classId) {
+                document.getElementById('lectureSelect').innerHTML = '<option value="">Select a class first</option>';
+                return;
+            }
+
+            fetch(`${API_CONFIG.LECTURE_SERVICE}/api/lectures/class/${classId}`)
+                .then(response => response.json())
+                .then(lectures => {
+                    const select = document.getElementById('lectureSelect');
+                    select.innerHTML = '<option value="">Select Lecture</option>';
+                    lectures.forEach(lecture => {
+                        const option = document.createElement('option');
+                        option.value = lecture.id;
+                        option.textContent = `${lecture.name} - ${lecture.date} ${lecture.time}`;
+                        select.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading lectures:', error);
+                    alert('Error loading lectures. Please try again.');
+                });
+        }
 
         // Load students when lecture is selected
         document.getElementById('lectureSelect').addEventListener('change', function() {

@@ -244,6 +244,55 @@
             sessionStorage.removeItem('isAdminLoggedIn');
             window.location.href = 'login.html';
         }
+
+        function loadAttendanceReport() {
+            const classId = document.getElementById('classFilter').value;
+            const subject = document.getElementById('subjectFilter').value;
+
+            fetch(`${API_CONFIG.ATTENDANCE_SERVICE}/api/attendance?class_id=${classId}&subject=${subject}`)
+                .then(response => response.json())
+                .then(records => {
+                    const tbody = document.getElementById('attendanceTableBody');
+                    tbody.innerHTML = '';
+
+                    // Group records by student
+                    const studentRecords = {};
+                    records.forEach(record => {
+                        if (!studentRecords[record.student_id]) {
+                            studentRecords[record.student_id] = {
+                                name: record.student_name,
+                                total: 0,
+                                present: 0
+                            };
+                        }
+                        studentRecords[record.student_id].total++;
+                        if (record.status === 'Present') {
+                            studentRecords[record.student_id].present++;
+                        }
+                    });
+
+                    // Display records
+                    Object.values(studentRecords).forEach(student => {
+                        const row = document.createElement('tr');
+                        const percentage = student.total > 0 ? (student.present / student.total * 100).toFixed(1) : 0;
+                        row.innerHTML = `
+                            <td>${student.name}</td>
+                            <td>${student.present}</td>
+                            <td>${student.total}</td>
+                            <td>${percentage}%</td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading attendance report:', error);
+                    alert('Error loading attendance report. Please try again.');
+                });
+        }
+
+        // Add event listeners for filters
+        document.getElementById('classFilter').addEventListener('change', loadAttendanceReport);
+        document.getElementById('subjectFilter').addEventListener('change', loadAttendanceReport);
     </script>
 </body>
 </html> 
