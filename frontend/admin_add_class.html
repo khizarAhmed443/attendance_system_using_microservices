@@ -49,6 +49,7 @@
             </div>
         </div>
     </div>
+    <script src="js/config.js"></script>
     <script>
         // Load classes when page loads
         document.addEventListener('DOMContentLoaded', () => {
@@ -58,7 +59,7 @@
         });
 
         function loadClasses() {
-            fetch('http://localhost:5004/api/classes')
+            fetch(`${API_CONFIG.CLASS_SERVICE}/api/classes`)
                 .then(response => response.json())
                 .then(classes => {
                     const tbody = document.getElementById('classTableBody');
@@ -87,7 +88,7 @@
             const name = document.getElementById('className').value;
             const description = document.getElementById('classDescription').value;
 
-            fetch('http://localhost:5004/api/classes', {
+            fetch(`${API_CONFIG.CLASS_SERVICE}/api/classes`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -117,7 +118,7 @@
                 const updatedName = document.getElementById('className').value;
                 const updatedDescription = document.getElementById('classDescription').value;
 
-                fetch(`http://localhost:5004/api/classes/${id}`, {
+                fetch(`${API_CONFIG.CLASS_SERVICE}/api/classes/${id}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json'
@@ -142,7 +143,7 @@
 
         function deleteClass(id) {
             if (confirm('Are you sure you want to delete this class?')) {
-                fetch(`http://localhost:5004/api/classes/${id}`, {
+                fetch(`${API_CONFIG.CLASS_SERVICE}/api/classes/${id}`, {
                     method: 'DELETE'
                 })
                 .then(response => {

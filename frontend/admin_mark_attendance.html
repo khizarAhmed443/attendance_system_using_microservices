@@ -32,175 +32,122 @@
                 </div>
                 <div class="form-group">
                     <label for="lectureSelect">Lecture</label>
-                    <select id="lectureSelect" required disabled>
+                    <select id="lectureSelect" required>
                         <option value="">Select Lecture</option>
                     </select>
                 </div>
-                <div id="studentList" class="student-list">
-                    <!-- Student checkboxes will be added here -->
+                <div id="studentList" class="section">
+                    <h2>Students</h2>
+                    <div id="studentCheckboxes"></div>
                 </div>
                 <button type="submit">Mark Attendance</button>
             </form>
         </div>
     </div>
+    <script src="js/config.js"></script>
     <script>
-        // Cache for storing data
-        const dataCache = {
-            classes: [],
-            students: [],
-            lectures: []
-        };
+        // Load classes when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            loadClasses();
+            // Add form submit handler
+            document.getElementById('attendanceForm').addEventListener('submit', markAttendance);
+        });
 
-        // Load classes for dropdown
-        async function loadClasses() {
-            const classSelect = document.getElementById('classSelect');
-            try {
-                const response = await fetch('http://localhost:5004/api/classes');
-                const classes = await response.json();
-                dataCache.classes = classes;
-                
-                classSelect.innerHTML = '<option value="">Select Class</option>';
-                classes.forEach(cls => {
-                    classSelect.innerHTML += `<option value="${cls.id}">${cls.name}</option>`;
+        function loadClasses() {
+            fetch(`${API_CONFIG.CLASS_SERVICE}/api/classes`)
+                .then(response => response.json())
+                .then(classes => {
+                    const select = document.getElementById('classSelect');
+                    select.innerHTML = '<option value="">Select Class</option>';
+                    classes.forEach(classItem => {
+                        const option = document.createElement('option');
+                        option.value = classItem.id;
+                        option.textContent = classItem.name;
+                        select.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading classes:', error);
+                    alert('Error loading classes. Please try again.');
                 });
-            } catch (err) {
-                console.error('Error loading classes:', err);
-                classSelect.innerHTML = '<option value="">Error loading classes</option>';
-            }
         }
 
-        // Load students and lectures
-        async function loadStudentsAndLectures() {
-            try {
-                const [studentsResponse, lecturesResponse] = await Promise.all([
-                    fetch('http://localhost:5001/api/students'),
-                    fetch('http://localhost:5002/api/lectures')
-                ]);
-                
-                dataCache.students = await studentsResponse.json();
-                dataCache.lectures = await lecturesResponse.json();
-            } catch (err) {
-                console.error('Error loading data:', err);
-            }
-        }
-
-        // When class changes, update lectures and students
+        // Load lectures when class is selected
         document.getElementById('classSelect').addEventListener('change', function() {
             const classId = this.value;
-            const lectureSelect = document.getElementById('lectureSelect');
-            const studentList = document.getElementById('studentList');
-            
-            lectureSelect.innerHTML = '<option value="">Select Lecture</option>';
-            lectureSelect.disabled = !classId;
-
-            if (!classId) {
-                studentList.innerHTML = '';
-                return;
+            if (classId) {
+                fetch(`${API_CONFIG.LECTURE_SERVICE}/api/lectures/class/${classId}`)
+                    .then(response => response.json())
+                    .then(lectures => {
+                        const select = document.getElementById('lectureSelect');
+                        select.innerHTML = '<option value="">Select Lecture</option>';
+                        lectures.forEach(lecture => {
+                            const option = document.createElement('option');
+                            option.value = lecture.id;
+                            option.textContent = `${lecture.name} (${lecture.day} at ${lecture.time})`;
+                            select.appendChild(option);
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error loading lectures:', error);
+                        alert('Error loading lectures. Please try again.');
+                    });
             }
-
-            // Filter lectures for selected class
-            const classLectures = dataCache.lectures.filter(l => l.class_id == classId);
-            
-            if (classLectures.length === 0) {
-                lectureSelect.innerHTML = '<option value="">No lectures available</option>';
-                studentList.innerHTML = '<div class="message">No lectures available for this class</div>';
-                return;
-            }
-
-            // Group lectures by subject
-            const lecturesBySubject = classLectures.reduce((acc, lecture) => {
-                if (!acc[lecture.subject]) {
-                    acc[lecture.subject] = [];
-                }
-                acc[lecture.subject].push(lecture);
-                return acc;
-            }, {});
-
-            // Populate lecture select with subjects
-            Object.keys(lecturesBySubject).forEach(subject => {
-                const option = document.createElement('optgroup');
-                option.label = subject;
-                lecturesBySubject[subject].forEach(lecture => {
-                    const lectureOption = document.createElement('option');
-                    lectureOption.value = lecture.id;
-                    lectureOption.textContent = `${lecture.date} ${lecture.time}`;
-                    option.appendChild(lectureOption);
-                });
-                lectureSelect.appendChild(option);
-            });
-
-            // Filter and display students for class
-            const classStudents = dataCache.students.filter(s => s.class_id == classId);
-
-            if (classStudents.length === 0) {
-                studentList.innerHTML = '<div class="message">No students found in this class</div>';
-                return;
-            }
-
-            studentList.innerHTML = '<h3>Select Present Students:</h3>';
-            classStudents.forEach(student => {
-                studentList.innerHTML += `
-                    <div class="student-item">
-                        <input type="checkbox" id="student_${student.roll_number}" value="${student.roll_number}" name="students">
-                        <label for="student_${student.roll_number}">${student.name} (${student.roll_number})</label>
-                    </div>
-                `;
-            });
         });
 
-        // Handle form submission
-        document.getElementById('attendanceForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
+        // Load students when lecture is selected
+        document.getElementById('lectureSelect').addEventListener('change', function() {
+            const classId = document.getElementById('classSelect').value;
+            if (classId) {
+                fetch(`${API_CONFIG.STUDENT_SERVICE}/api/students/class/${classId}`)
+                    .then(response => response.json())
+                    .then(students => {
+                        const container = document.getElementById('studentCheckboxes');
+                        container.innerHTML = '';
+                        students.forEach(student => {
+                            const div = document.createElement('div');
+                            div.className = 'checkbox-group';
+                            div.innerHTML = `
+                                <input type="checkbox" id="student_${student.id}" value="${student.id}">
+                                <label for="student_${student.id}">${student.name}</label>
+                            `;
+                            container.appendChild(div);
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error loading students:', error);
+                        alert('Error loading students. Please try again.');
+                    });
+            }
+        });
+
+        function markAttendance(event) {
+            event.preventDefault();
             const lectureId = document.getElementById('lectureSelect').value;
-            const selectedStudents = Array.from(document.querySelectorAll('input[name="students"]:checked'))
+            const presentStudents = Array.from(document.querySelectorAll('#studentCheckboxes input:checked'))
                 .map(checkbox => checkbox.value);
 
-            if (!lectureId || selectedStudents.length === 0) {
-                alert('Please select a lecture and at least one student');
-                return;
-            }
-
-            try {
-                const lecture = dataCache.lectures.find(l => l.id == lectureId);
-                const classObj = dataCache.classes.find(c => c.id == lecture.class_id);
-
-                // Mark attendance for each selected student
-                const attendancePromises = selectedStudents.map(rollNumber => {
-                    const student = dataCache.students.find(s => s.roll_number === rollNumber);
-                    return fetch('http://localhost:5003/api/attendance', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            lecture_id: lectureId,
-                            roll_number: rollNumber,
-                            status: 'present',
-                            date: lecture.date,
-                            time: lecture.time,
-                            subject: lecture.subject,
-                            class_name: classObj.name,
-                            student_name: student.name
-                        })
-                    });
-                });
-
-                await Promise.all(attendancePromises);
+            fetch(`${API_CONFIG.ATTENDANCE_SERVICE}/api/attendance`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    lecture_id: lectureId,
+                    present_students: presentStudents
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
                 alert('Attendance marked successfully!');
-                this.reset();
-                document.getElementById('studentList').innerHTML = '';
-            } catch (error) {
+                document.getElementById('attendanceForm').reset();
+                document.getElementById('studentCheckboxes').innerHTML = '';
+            })
+            .catch(error => {
                 console.error('Error marking attendance:', error);
                 alert('Error marking attendance. Please try again.');
-            }
-        });
-
-        // Load initial data
-        document.addEventListener('DOMContentLoaded', async () => {
-            await loadClasses();
-            await loadStudentsAndLectures();
-        });
+            });
+        }
 
         function logout() {
             sessionStorage.removeItem('isAdminLoggedIn');

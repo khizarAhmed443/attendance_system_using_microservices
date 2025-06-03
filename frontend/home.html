@@ -3,180 +3,148 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home - Attendance System</title>
+    <title>Attendance System</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <nav class="navbar">
         <a href="home.html" class="navbar-brand">Attendance System</a>
         <div class="navbar-links">
-            <a href="login.html">Admin Login</a>
+            <a href="admin_add_class.html">Add Class</a>
+            <a href="admin_add_student.html">Add Student</a>
+            <a href="admin_add_lecture.html">Add Lecture</a>
+            <a href="admin_mark_attendance.html">Mark Attendance</a>
+            <a href="admin_report.html">Report</a>
+            <a href="#" onclick="logout()">Logout</a>
         </div>
     </nav>
     <div class="container">
         <header>
-            <h1>View Attendance</h1>
+            <h1>Attendance View</h1>
         </header>
         <div class="panel">
             <div class="filter-controls">
                 <div class="form-group">
-                    <label for="classFilter">Select Class:</label>
+                    <label for="classFilter">Class</label>
                     <select id="classFilter">
                         <option value="">All Classes</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="subjectFilter">Select Subject:</label>
+                    <label for="subjectFilter">Subject</label>
                     <select id="subjectFilter">
                         <option value="">All Subjects</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label for="rollNumber">Roll Number:</label>
-                    <input type="text" id="rollNumber" placeholder="Enter roll number">
-                </div>
                 <button onclick="searchAttendance()">Search</button>
                 <button onclick="resetFilters()">Reset</button>
             </div>
-            <div class="attendance-result">
-                <div id="loadingIndicator" class="loading" style="display: none;">Loading...</div>
-                <table class="attendance-table">
+            <div id="loadingIndicator" class="loading" style="display: none;">Loading...</div>
+            <div id="attendanceList" class="section">
+                <h2>Attendance Records</h2>
+                <table id="attendanceTable">
                     <thead>
                         <tr>
                             <th>Date</th>
                             <th>Time</th>
                             <th>Subject</th>
-                            <th>Class</th>
-                            <th>Student Name</th>
-                            <th>Roll Number</th>
+                            <th>Student</th>
                             <th>Status</th>
                         </tr>
                     </thead>
-                    <tbody id="attendanceTableBody">
-                    </tbody>
+                    <tbody id="attendanceTableBody"></tbody>
                 </table>
             </div>
         </div>
     </div>
+    <script src="js/config.js"></script>
     <script>
         // Cache for storing data
         const dataCache = {
-            classes: { data: [], timestamp: 0 },
-            attendance: { data: [], timestamp: 0 },
-            lectures: { data: [], timestamp: 0 },
-            students: { data: {}, timestamp: 0 }  // Changed to object for faster lookups
+            classes: { data: null, timestamp: null },
+            students: { data: null, timestamp: null },
+            lectures: { data: null, timestamp: null },
+            attendance: { data: null, timestamp: null }
         };
+        const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-        // Cache duration in milliseconds (5 minutes)
-        const CACHE_DURATION = 5 * 60 * 1000;
+        // Load initial data when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            loadInitialData();
+        });
 
-        // Loading indicator functions
-        function showLoading() {
-            document.getElementById('loadingIndicator').style.display = 'block';
-            document.querySelector('.attendance-table').style.display = 'none';
-        }
-
-        function hideLoading() {
-            document.getElementById('loadingIndicator').style.display = 'none';
-            document.querySelector('.attendance-table').style.display = 'table';
-        }
-
-        // Fetch data with caching
-        async function fetchWithCache(url, cacheKey, transform = data => data) {
+        async function fetchWithCache(url, cacheKey) {
             const now = Date.now();
-            if (dataCache[cacheKey].data.length > 0 && (now - dataCache[cacheKey].timestamp < CACHE_DURATION)) {
+            if (dataCache[cacheKey] && now - dataCache[cacheKey].timestamp < CACHE_DURATION) {
                 return dataCache[cacheKey].data;
             }
 
-            try {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const data = await response.json();
-                dataCache[cacheKey].data = transform(data);
-                dataCache[cacheKey].timestamp = now;
-                return dataCache[cacheKey].data;
-            } catch (error) {
-                console.error(`Error fetching ${cacheKey}:`, error);
-                throw error;
-            }
+            const response = await fetch(url);
+            const data = await response.json();
+            dataCache[cacheKey] = {
+                data: data,
+                timestamp: now
+            };
+            return data;
         }
 
-        // Load initial data
         async function loadInitialData() {
-            showLoading();
             try {
-                // Load all data in parallel
-                const [classes, attendance, lectures] = await Promise.all([
-                    fetchWithCache('http://localhost:5004/api/classes', 'classes'),
-                    fetchWithCache('http://localhost:5003/api/attendance', 'attendance'),
-                    fetchWithCache('http://localhost:5002/api/lectures', 'lectures')
+                const [classes, students, lectures, attendance] = await Promise.all([
+                    fetchWithCache(`${API_CONFIG.CLASS_SERVICE}/api/classes`, 'classes'),
+                    fetchWithCache(`${API_CONFIG.STUDENT_SERVICE}/api/students`, 'students'),
+                    fetchWithCache(`${API_CONFIG.LECTURE_SERVICE}/api/lectures`, 'lectures'),
+                    fetchWithCache(`${API_CONFIG.ATTENDANCE_SERVICE}/api/attendance`, 'attendance')
                 ]);
 
-                // Create lookup maps for faster access
-                const classMap = new Map(classes.map(c => [c.id, c]));
-                const lectureMap = new Map(lectures.map(l => [l.id, l]));
-
-                // Populate class dropdown
+                // Populate class filter
                 const classFilter = document.getElementById('classFilter');
                 classFilter.innerHTML = '<option value="">All Classes</option>';
-                classes.forEach(classItem => {
+                classes.forEach(cls => {
                     const option = document.createElement('option');
-                    option.value = classItem.id;
-                    option.textContent = classItem.name;
+                    option.value = cls.id;
+                    option.textContent = cls.name;
                     classFilter.appendChild(option);
                 });
 
-                // Enrich attendance records with class and lecture data
-                const enrichedAttendance = attendance.map(record => ({
-                    ...record,
-                    class_name: classMap.get(record.class_id)?.name || 'N/A',
-                    subject: lectureMap.get(record.lecture_id)?.subject || 'N/A'
-                }));
+                // Create lookup maps for faster access
+                dataCache.studentMap = new Map(students.map(s => [s.id, s]));
+                dataCache.lectureMap = new Map(lectures.map(l => [l.id, l]));
+                dataCache.classMap = new Map(classes.map(c => [c.id, c]));
 
                 // Display all attendance records
-                displayAttendanceRecords(enrichedAttendance);
+                displayAttendanceRecords(attendance);
             } catch (error) {
                 console.error('Error loading initial data:', error);
                 alert('Error loading data. Please refresh the page.');
-            } finally {
-                hideLoading();
             }
         }
 
-        // When class changes
-        document.getElementById('classFilter').addEventListener('change', async function() {
+        // Update subjects when class is selected
+        document.getElementById('classFilter').addEventListener('change', function() {
             const classId = this.value;
             const subjectFilter = document.getElementById('subjectFilter');
             subjectFilter.innerHTML = '<option value="">All Subjects</option>';
-            
+
             if (classId) {
-                try {
-                    // Use cached lectures data
-                    const lectures = dataCache.lectures.data;
-                    const subjects = [...new Set(lectures
-                        .filter(lecture => lecture.class_id == classId)
-                        .map(lecture => lecture.subject))];
-                    
-                    subjects.forEach(subject => {
-                        const option = document.createElement('option');
-                        option.value = subject;
-                        option.textContent = subject;
-                        subjectFilter.appendChild(option);
-                    });
-                } catch (error) {
-                    console.error('Error loading subjects:', error);
-                }
+                const classLectures = dataCache.lectures.data.filter(l => l.class_id == classId);
+                const subjects = [...new Set(classLectures.map(l => l.name))];
+                subjects.forEach(subject => {
+                    const option = document.createElement('option');
+                    option.value = subject;
+                    option.textContent = subject;
+                    subjectFilter.appendChild(option);
+                });
             }
         });
 
-        // Function to display attendance records
         function displayAttendanceRecords(records) {
             const tbody = document.getElementById('attendanceTableBody');
             tbody.innerHTML = '';
-            
-            if (!records || records.length === 0) {
+
+            if (records.length === 0) {
                 const row = document.createElement('tr');
-                row.innerHTML = '<td colspan="7" class="no-data">No attendance records found</td>';
+                row.innerHTML = '<td colspan="5" class="no-data">No records found</td>';
                 tbody.appendChild(row);
                 return;
             }
@@ -188,65 +156,54 @@
                 return dateB - dateA;
             });
 
-            // Create document fragment for better performance
-            const fragment = document.createDocumentFragment();
-            
             records.forEach(record => {
+                const lecture = dataCache.lectureMap.get(record.lecture_id);
+                const student = dataCache.studentMap.get(record.student_id);
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${record.date || 'N/A'}</td>
-                    <td>${record.time || 'N/A'}</td>
-                    <td>${record.subject || 'N/A'}</td>
-                    <td>${record.class_name || 'N/A'}</td>
-                    <td>${record.student_name || 'N/A'}</td>
-                    <td>${record.roll_number || 'N/A'}</td>
-                    <td><span class="status-${(record.status || '').toLowerCase()}">${record.status || 'N/A'}</span></td>
+                    <td>${record.date}</td>
+                    <td>${record.time}</td>
+                    <td>${lecture ? lecture.name : 'N/A'}</td>
+                    <td>${student ? student.name : 'N/A'}</td>
+                    <td>${record.status}</td>
                 `;
-                fragment.appendChild(row);
+                tbody.appendChild(row);
             });
-
-            tbody.appendChild(fragment);
         }
 
-        // Function to search attendance
-        async function searchAttendance() {
+        function searchAttendance() {
             const classId = document.getElementById('classFilter').value;
             const subject = document.getElementById('subjectFilter').value;
-            const rollNumber = document.getElementById('rollNumber').value;
 
-            showLoading();
+            let filteredRecords = dataCache.attendance.data;
 
-            try {
-                // Use cached attendance data
-                const attendance = dataCache.attendance.data;
-                
-                // Filter records
-                let filteredRecords = attendance.filter(record => {
-                    if (classId && record.class_id != classId) return false;
-                    if (subject && record.subject !== subject) return false;
-                    if (rollNumber && record.roll_number !== rollNumber) return false;
-                    return true;
+            if (classId) {
+                filteredRecords = filteredRecords.filter(record => {
+                    const lecture = dataCache.lectureMap.get(record.lecture_id);
+                    return lecture && lecture.class_id == classId;
                 });
-
-                displayAttendanceRecords(filteredRecords);
-            } catch (error) {
-                console.error('Error searching attendance:', error);
-                alert('Error searching attendance. Please try again.');
-            } finally {
-                hideLoading();
             }
+
+            if (subject) {
+                filteredRecords = filteredRecords.filter(record => {
+                    const lecture = dataCache.lectureMap.get(record.lecture_id);
+                    return lecture && lecture.name === subject;
+                });
+            }
+
+            displayAttendanceRecords(filteredRecords);
         }
 
-        // Function to reset filters
         function resetFilters() {
             document.getElementById('classFilter').value = '';
             document.getElementById('subjectFilter').value = '';
-            document.getElementById('rollNumber').value = '';
             displayAttendanceRecords(dataCache.attendance.data);
         }
 
-        // Load initial data when page loads
-        document.addEventListener('DOMContentLoaded', loadInitialData);
+        function logout() {
+            sessionStorage.removeItem('isAdminLoggedIn');
+            window.location.href = 'login.html';
+        }
     </script>
     <style>
         .loading {
